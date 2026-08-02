@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moonee — Gestion financière personnelle</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%233b6df0'/%3E%3Ctext x='32' y='42' font-size='30' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3E%F0%9F%AA%99%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div id="app">
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="window-dots" aria-hidden="true">
+      <span class="wd wd-close"></span>
+      <span class="wd wd-min"></span>
+      <span class="wd wd-zoom"></span>
+    </div>
+    <div class="brand">
+      <div class="brand-mark">◈</div>
+      <div class="brand-text">Moonee</div>
+    </div>
+
+    <nav class="nav" id="mainNav">
+      <button class="nav-item active" data-page="dashboard"><span class="nav-ico">▦</span>Tableau de bord</button>
+      <button class="nav-item" data-page="accounts"><span class="nav-ico">🏦</span>Comptes</button>
+      <button class="nav-item" data-page="transactions"><span class="nav-ico">⇅</span>Revenus &amp; charges</button>
+      <button class="nav-item" data-page="loans"><span class="nav-ico">🏠</span>Prêts</button>
+      <button class="nav-item" data-page="realestate"><span class="nav-ico">🏘️</span>Immobilier</button>
+      <button class="nav-item" data-page="holdings"><span class="nav-ico">🏛️</span>Holdings</button>
+      <button class="nav-item" data-page="split"><span class="nav-ico">👥</span>Répartition</button>
+      <button class="nav-item" data-page="analysis"><span class="nav-ico">📊</span>Analyse</button>
+      <button class="nav-item" data-page="alerts"><span class="nav-ico">🔔</span>Alertes <span class="nav-badge" id="navAlertsBadge" hidden></span></button>
+      <button class="nav-item" data-page="practices"><span class="nav-ico">✅</span>Bonnes pratiques</button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="networth-mini">
+        <div class="networth-mini-label">Patrimoine net</div>
+        <div class="networth-mini-value" id="miniNetWorth">—</div>
+        <div class="networth-mini-delta" id="miniDelta">—</div>
+      </div>
+      <button class="ghost-btn profile-btn" id="btnProfile" title="Mon compte Moonee — profil, connexion, clé de sécurité">👤 Mon profil · <span id="profilePseudo">Tommy</span></button>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main" id="main">
+
+    <!-- DASHBOARD -->
+    <section id="page-dashboard" class="page active">
+      <header class="page-head">
+        <div>
+          <h1>Tableau de bord</h1>
+          <p class="page-sub" id="dashSubtitle">Vue d'ensemble de votre santé financière</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-primary" id="btnAddTx">＋ Nouvelle transaction</button>
+          <button class="btn btn-outline" id="btnAddAccount">＋ Compte</button>
+        </div>
+      </header>
+
+      <div id="dashKpis"></div>
+
+      <div class="grid dash-grid">
+        <div class="card health-card span-3" id="healthCard"></div>
+        <div class="card span-2" id="chartNwCard">
+          <div class="card-head"><h3>Évolution du patrimoine net</h3><span class="card-hint">12 derniers mois</span></div>
+          <div class="chart-box"><canvas id="chartNw"></canvas></div>
+        </div>
+        <div class="card" id="chartAllocCard">
+          <div class="card-head"><h3>Répartition du patrimoine</h3><span class="card-hint">Par classe d'actifs</span></div>
+          <div class="chart-box"><canvas id="chartAlloc"></canvas></div>
+        </div>
+        <div class="card span-2" id="chartFlowCard">
+          <div class="card-head"><h3>Revenus vs dépenses</h3><span class="card-hint">12 derniers mois</span></div>
+          <div class="chart-box tall"><canvas id="chartFlow"></canvas></div>
+        </div>
+        <div class="card" id="chartSplitCard">
+          <div class="card-head"><h3>Répartition des charges</h3><span class="card-hint">12 derniers mois</span></div>
+          <div class="chart-box"><canvas id="chartSplit"></canvas></div>
+        </div>
+        <div class="card span-3" id="projectionCard">
+          <div class="card-head"><h3>Projection des flux récurrents</h3><span class="card-hint">12 prochains mois · sur la base de vos flux récurrents</span></div>
+          <div class="kpis" id="projectionKpis" style="margin-top:0"></div>
+          <div class="chart-box tall" style="margin-top:16px"><canvas id="chartProjection"></canvas></div>
+        </div>
+        <div class="card span-3" id="recentCard">
+          <div class="card-head"><h3>Dernières transactions</h3><a href="#" class="card-link" data-goto="transactions">Tout voir →</a></div>
+          <div class="table-wrap" id="recentTable"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACCOUNTS -->
+    <section id="page-accounts" class="page">
+      <header class="page-head">
+        <div>
+          <h1>Comptes &amp; patrimoine</h1>
+          <p class="page-sub">Comptes courants, épargne, investissements, crypto, pro</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-primary" id="btnAddAccount2">＋ Ajouter un compte</button>
+        </div>
+      </header>
+      <div class="kpis" id="accountsKpis"></div>
+      <div id="accountsGroups"></div>
+    </section>
+
+    <!-- TRANSACTIONS -->
+    <section id="page-transactions" class="page">
+      <header class="page-head">
+        <div>
+          <h1>Revenus &amp; charges</h1>
+          <p class="page-sub">Vos flux de trésorerie, catégorisés</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-outline" id="btnExportTx" title="Exporter le mois affiché (et le filtre actif) au format CSV">⬇ Exporter</button>
+          <button class="btn btn-outline" id="btnImportTx">⬆ Importer</button>
+          <button class="btn btn-primary" id="btnAddTx2">＋ Nouvelle transaction</button>
+        </div>
+      </header>
+
+      <div class="month-nav">
+        <button class="icon-btn" id="monthPrev" title="Mois précédent">‹</button>
+        <div class="month-label" id="monthLabel">—</div>
+        <button class="icon-btn" id="monthNext" title="Mois suivant">›</button>
+        <button class="ghost-btn" id="monthToday">Aujourd'hui</button>
+      </div>
+
+      <div class="kpis" id="txKpis"></div>
+
+      <div class="card">
+        <div class="tx-toolbar">
+          <div class="tabs" id="txTabs">
+            <button class="tab active" data-filter="all">Toutes</button>
+            <button class="tab" data-filter="income">Revenus</button>
+            <button class="tab" data-filter="expense">Dépenses</button>
+          </div>
+          <div class="acct-filter" id="acctFilterWrap">
+            <button class="ghost-btn" id="acctFilterBtn" type="button" title="Filtrer par compte">💳 Tous les comptes</button>
+            <div class="acct-filter-panel" id="acctFilterPanel" hidden>
+              <div class="acct-filter-head">
+                <b>Filtrer par compte</b>
+                <button class="ghost-btn btn-xs" id="acctFilterClear" type="button">Tout effacer</button>
+              </div>
+              <div class="acct-filter-list" id="acctFilterList"></div>
+            </div>
+          </div>
+        </div>
+        <div class="tx-sel-bar" id="txSelBar" hidden>
+          <span class="tx-sel-count" id="txSelCount"></span>
+          <div class="tx-sel-actions">
+            <button class="btn btn-outline btn-xs" id="txSelDup" title="Dupliquer les transactions sélectionnées">⧉ Dupliquer</button>
+            <button class="btn btn-outline btn-xs danger" id="txSelDel" title="Supprimer les transactions sélectionnées">🗑 Supprimer</button>
+            <button class="ghost-btn" id="txSelClear">Désélectionner</button>
+          </div>
+        </div>
+        <div class="table-wrap" id="txTable"></div>
+      </div>
+    </section>
+
+    <!-- LOANS -->
+    <section id="page-loans" class="page">
+      <header class="page-head">
+        <div>
+          <h1>Prêts &amp; emprunts</h1>
+          <p class="page-sub">Crédit immobilier, travaux, consommation</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-primary" id="btnAddLoan">＋ Ajouter un prêt</button>
+        </div>
+      </header>
+      <div class="kpis" id="loansKpis"></div>
+      <div id="loansList"></div>
+    </section>
+
+    <!-- IMMOBILIER -->
+    <section id="page-realestate" class="page">
+      <header class="page-head">
+        <div>
+          <h1>Biens immobiliers</h1>
+          <p class="page-sub">Valeur, fonds propres, performance annuelle et travaux — par bien</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-primary" id="btnAddBien">＋ Ajouter un bien</button>
+        </div>
+      </header>
+
+      <div class="kpis" id="reKpis"></div>
+
+      <div class="grid">
+        <div class="card span-3" id="reChartCard">
+          <div class="card-head"><h3>Valeur vs dette par bien</h3><span class="card-hint">Fonds propres = valeur − dette</span></div>
+          <div class="chart-box tall"><canvas id="chartRealEstate"></canvas></div>
+        </div>
+        <div class="card span-3" id="reAnnualChartCard">
+          <div class="card-head"><h3>Performance annuelle par bien</h3><span class="card-hint">Revenus − charges − prêts · annualisés (flux récurrents liés)</span></div>
+          <div class="chart-box tall"><canvas id="chartRealEstateAnnual"></canvas></div>
+        </div>
+      </div>
+
+      <div id="reBiens"></div>
+    </section>
+
+    <!-- HOLDINGS -->
+    <section id="page-holdings" class="page">
+      <header class="page-head">
+        <div>
+          <h1>Holdings &amp; sociétés</h1>
+          <p class="page-sub">SASU, SCI, holdings — détention et propriété effective</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-primary" id="btnAddHolding">＋ Ajouter une entité</button>
+        </div>
+      </header>
+
+      <div class="kpis" id="holdingKpis"></div>
+
+      <!-- Simulateur : remontée de trésorerie (mère-fille) -->
+      <div class="card" id="simCard">
+        <div class="card-head">
+          <h3>🪙 Simulateur — Remontée de trésorerie</h3>
+          <span class="card-hint">SCI TODA → Space Unity → Tommy · impact instantané</span>
+        </div>
+        <div id="simBody"></div>
+      </div>
+
+      <div class="grid holding-grid">
+        <div class="card span-2" id="holdingChartCard">
+          <div class="card-head"><h3>Valeur nette par entité</h3><span class="card-hint">Comptes liés − prêts liés</span></div>
+          <div class="chart-box tall"><canvas id="chartHoldingBars"></canvas></div>
+        </div>
+        <div class="card" id="holdingOwnersChartCard">
+          <div class="card-head"><h3>Propriété effective</h3><span class="card-hint">Par personne</span></div>
+          <div class="chart-box tall"><canvas id="chartHoldingOwners"></canvas></div>
+        </div>
+        <div class="card span-3" id="holdingTreeCard">
+          <div class="card-head"><h3>Chaîne de détention</h3><span class="card-hint">Entités → associés</span></div>
+          <div id="holdingTree"></div>
+        </div>
+        <div class="card span-3" id="holdingTableCard">
+          <div class="card-head"><h3>Détail des entités</h3></div>
+          <div class="table-wrap" id="holdingTable"></div>
+        </div>
+        <div class="card span-3" id="holdingDividendCard">
+          <div class="card-head"><h3>Remontées de dividendes — mère-fille</h3>
+            <button class="btn btn-outline btn-xs" id="btnAddDividend">＋ Enregistrer un dividende</button>
+          </div>
+          <div class="div-grid">
+            <div class="chart-box tall"><canvas id="chartDividends"></canvas></div>
+            <div class="table-wrap" id="dividendTable"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SPLIT -->
+    <section id="page-split" class="page">
+      <header class="page-head">
+        <div>
+          <h1>Répartition David / Tommy</h1>
+          <p class="page-sub">Loyer Davout partagé proportionnellement aux revenus</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-primary" id="btnAddSplit">＋ Enregistrer un versement</button>
+        </div>
+      </header>
+
+      <div class="kpis" id="splitKpis"></div>
+
+      <div class="grid split-grid">
+        <div class="card span-2" id="splitDebtCard">
+          <div class="card-head"><h3>Évolution des dettes David / Tommy</h3><span class="card-hint">12 derniers mois</span></div>
+          <div class="chart-box tall"><canvas id="chartSplitDebt"></canvas></div>
+        </div>
+        <div class="card" id="splitShareCard">
+          <div class="card-head"><h3>Clé de répartition</h3><span class="card-hint">Loyer Davout</span></div>
+          <div class="chart-box"><canvas id="chartSplitShare"></canvas></div>
+        </div>
+        <div class="card span-3" id="splitPayCard">
+          <div class="card-head"><h3>Versements mensuels</h3><span class="card-hint">12 derniers mois</span></div>
+          <div class="chart-box tall"><canvas id="chartSplitPayments"></canvas></div>
+        </div>
+        <div class="card span-2" id="splitTableCard">
+          <div class="card-head"><h3>Historique des versements</h3><span class="card-hint">Loyer Davout</span></div>
+          <div class="table-wrap" id="splitTable"></div>
+        </div>
+        <div class="card" id="splitDetailCard">
+          <div class="card-head"><h3>Détail du partage</h3><button class="btn btn-outline btn-xs" id="btnSplitConfig" type="button" title="Modifier le loyer et les salaires">⚙️ Modifier</button></div>
+          <div id="splitDetail"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALYSIS -->
+    <section id="page-analysis" class="page">
+      <header class="page-head">
+        <div>
+          <h1>Analyse financière</h1>
+          <p class="page-sub">Votre santé financière en profondeur</p>
+        </div>
+      </header>
+      <div id="analysisContent"></div>
+    </section>
+
+    <!-- ALERTS -->
+    <section id="page-alerts" class="page">
+      <header class="page-head">
+        <div>
+          <h1>Alertes automatiques</h1>
+          <p class="page-sub">Bonnes pratiques financières surveillées pour vous</p>
+        </div>
+        <div class="page-actions" id="alertsCounts"></div>
+      </header>
+      <div id="alertsList"></div>
+    </section>
+
+    <!-- PRACTICES -->
+    <section id="page-practices" class="page">
+      <header class="page-head">
+        <div>
+          <h1>Bonnes pratiques financières</h1>
+          <p class="page-sub">Les règles d'or de la finance personnelle, évaluées sur vos données</p>
+        </div>
+      </header>
+      <div class="practices-intro" id="practicesIntro"></div>
+      <div class="practices-grid" id="practicesList"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============ MODAL : COMPTE ============ -->
+<div class="modal-overlay" id="modalAccount" hidden>
+  <div class="modal">
+    <div class="modal-head"><h3 id="accountModalTitle">Ajouter un compte</h3><button class="modal-close" data-close="modalAccount">✕</button></div>
+    <form id="accountForm" class="modal-body">
+      <input type="hidden" id="acctId">
+      <div class="form-grid">
+        <label>Nom du compte<input id="acctName" required placeholder="Ex : Livret A"></label>
+        <label>Type
+          <select id="acctType" required></select>
+        </label>
+        <label>Établissement<input id="acctInstitution" placeholder="Ex : BoursoBank"></label>
+        <label>Solde actuel (€)<input id="acctBalance" type="number" step="0.01" required placeholder="0,00"></label>
+        <label>Taux (%) <span class="muted">optionnel</span><input id="acctRate" type="number" step="0.01" min="0" placeholder="Ex : 3,0"></label>
+        <label>Plafond (€) <span class="muted">optionnel</span><input id="acctLimit" type="number" step="0.01" min="0" placeholder="Ex : 22 950"></label>
+        <label>Date d'ouverture<input id="acctOpened" type="date"></label>
+        <label>Société / holding <span class="muted">optionnel</span>
+          <select id="acctHolding">
+            <option value="">— Aucune —</option>
+          </select>
+        </label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-close="modalAccount">Annuler</button>
+        <button type="submit" class="btn btn-primary" id="accountSubmit">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODAL : TRANSACTION ============ -->
+<div class="modal-overlay" id="modalTx" hidden>
+  <div class="modal">
+    <div class="modal-head"><h3 id="txModalTitle">Nouvelle transaction</h3><button class="modal-close" data-close="modalTx">✕</button></div>
+    <form id="txForm" class="modal-body">
+      <input type="hidden" id="txId">
+      <div class="form-grid">
+        <label>Date<input id="txDate" type="date" required></label>
+        <label>Libellé<input id="txLabel" required placeholder="Ex : Courses"></label>
+        <label>Montant (€)<input id="txAmount" type="number" step="0.01" required placeholder="0,00"></label>
+        <label>Type
+          <select id="txType"><option value="expense">Dépense</option><option value="income">Revenu</option></select>
+        </label>
+        <label>Catégorie<select id="txCategory" required></select></label>
+        <label>Nature de la charge<select id="txNecessity" required></select></label>
+        <label>Compte<select id="txAccount" required></select></label>
+        <label>Bien immobilier <span class="muted">optionnel</span><select id="txBien"></select></label>
+        <label class="check-label"><input type="checkbox" id="txRecurring"> <span>Dépense / revenu récurrent (mensuel)</span></label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-close="modalTx">Annuler</button>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODAL : VERSEMENT RÉPARTITION ============ -->
+<div class="modal-overlay" id="modalSplit" hidden>
+  <div class="modal">
+    <div class="modal-head"><h3 id="splitModalTitle">Enregistrer un versement</h3><button class="modal-close" data-close="modalSplit">✕</button></div>
+    <form id="splitForm" class="modal-body">
+      <input type="hidden" id="splitId">
+      <div class="form-grid">
+        <label class="full">Mois<select id="splitMonth"></select></label>
+        <label>David a versé (€)<input id="splitDavidPaid" type="number" step="0.01" min="0" required placeholder="Ex : 1237,91"></label>
+        <label>Tommy a versé (€)<input id="splitTommyPaid" type="number" step="0.01" min="0" required placeholder="Ex : 1049,74"></label>
+        <label class="full">Note <span class="muted">optionnel</span><input id="splitNote" placeholder="Ex : virement reçu le 5"></label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-close="modalSplit">Annuler</button>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODAL : PARAMÈTRES DE RÉPARTITION ============ -->
+<div class="modal-overlay" id="modalSplitConfig" hidden>
+  <div class="modal">
+    <div class="modal-head"><h3>Paramètres de répartition</h3><button class="modal-close" data-close="modalSplitConfig">✕</button></div>
+    <form id="splitConfigForm" class="modal-body">
+      <div class="form-grid">
+        <label class="full">Loyer Davout (€)<input id="scRent" type="number" step="0.01" min="0" required placeholder="Ex : 2287,65"></label>
+        <label>Salaire David (€)<input id="scSalaryDavid" type="number" step="0.01" min="0" required placeholder="Ex : 6250"></label>
+        <label>Salaire Tommy (€)<input id="scSalaryTommy" type="number" step="0.01" min="0" required placeholder="Ex : 5300"></label>
+        <div class="full dividend-hint" id="scHint"></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-close="modalSplitConfig">Annuler</button>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODAL : ENTITÉ / HOLDING ============ -->
+<div class="modal-overlay" id="modalHolding" hidden>
+  <div class="modal">
+    <div class="modal-head"><h3 id="holdingModalTitle">Ajouter une entité</h3><button class="modal-close" data-close="modalHolding">✕</button></div>
+    <form id="holdingForm" class="modal-body">
+      <input type="hidden" id="holdingId">
+      <div class="form-grid">
+        <label>Nom de l'entité<input id="holdingName" required placeholder="Ex : SCI TODA"></label>
+        <label>Type
+          <select id="holdingType"></select>
+        </label>
+        <label class="full">Associés &amp; parts
+          <div id="holdingOwners"></div>
+          <button type="button" class="btn btn-outline btn-xs" id="btnAddOwner" style="margin-top:6px">＋ Ajouter un associé</button>
+        </label>
+        <label class="full">Comptes liés <span class="muted">optionnel — maintenez Ctrl pour en choisir plusieurs</span>
+          <select id="holdingAccounts" multiple size="4"></select>
+        </label>
+        <label class="full">Prêts liés <span class="muted">optionnel</span>
+          <select id="holdingLoans" multiple size="3"></select>
+        </label>
+        <label class="full">Notes <span class="muted">optionnel</span><input id="holdingNotes" placeholder="Ex : siège, immatriculation…"></label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-close="modalHolding">Annuler</button>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODAL : DIVIDENDE (MÈRE-FILLE) ============ -->
+<div class="modal-overlay" id="modalDividend" hidden>
+  <div class="modal">
+    <div class="modal-head"><h3 id="dividendModalTitle">Enregistrer un dividende</h3><button class="modal-close" data-close="modalDividend">✕</button></div>
+    <form id="dividendForm" class="modal-body">
+      <input type="hidden" id="dividendId">
+      <div class="form-grid">
+        <label>Société qui verse (fille)<select id="dividendFrom" required></select></label>
+        <label>Société bénéficiaire (mère)<select id="dividendTo" required></select></label>
+        <label>Mois<input id="dividendMonth" type="month" required></label>
+        <label>Montant (€)<input id="dividendAmount" type="number" step="0.01" min="0" required placeholder="0,00"></label>
+        <label class="full">Note <span class="muted">optionnel</span><input id="dividendNote" placeholder="Ex : dividende AG — résultat 2026"></label>
+        <div class="full dividend-hint" id="dividendHint"></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-close="modalDividend">Annuler</button>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODAL : PRÊT ============ -->
+<div class="modal-overlay" id="modalLoan" hidden>
+  <div class="modal">
+    <div class="modal-head"><h3 id="loanModalTitle">Ajouter un prêt</h3><button class="modal-close" data-close="modalLoan">✕</button></div>
+    <form id="loanForm" class="modal-body">
+      <input type="hidden" id="loanId">
+      <div class="form-grid">
+        <label>Intitulé<input id="loanName" required placeholder="Ex : Prêt immobilier résidence"></label>
+        <label>Type
+          <select id="loanType"><option value="immobilier">Immobilier</option><option value="travaux">Travaux</option><option value="conso">Consommation</option><option value="auto">Automobile</option><option value="autre">Autre</option></select>
+        </label>
+        <label>Établissement prêteur<input id="loanInstitution" placeholder="Ex : Crédit Agricole"></label>
+        <label>Détenu par
+          <select id="loanHolder"></select>
+        </label>
+        <label>Montant initial (€)<input id="loanInitial" type="number" step="0.01" min="0" required></label>
+        <label>Capital restant (€)<input id="loanRemaining" type="number" step="0.01" min="0" required></label>
+        <label>Mensualité (€)<input id="loanMonthly" type="number" step="0.01" min="0" required></label>
+        <label>Taux nominal (%)<input id="loanRate" type="number" step="0.01" min="0" required></label>
+        <label>Durée (années)<input id="loanYears" type="number" min="1" required></label>
+        <label>Date de début<input id="loanStart" type="date"></label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-close="modalLoan">Annuler</button>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- ============ MODAL : BIEN IMMOBILIER ============ -->
+<div class="modal-overlay" id="modalBien" hidden>
+  <div class="modal">
+    <div class="modal-head"><h3 id="bienModalTitle">Ajouter un bien</h3><button class="modal-close" data-close="modalBien">✕</button></div>
+    <form id="bienForm" class="modal-body">
+      <input type="hidden" id="bienId">
+      <div class="form-grid">
+        <label>Nom du bien<input id="bienName" required placeholder="Ex : VAL (Ste)"></label>
+        <label>Statut
+          <select id="bienStatus">
+            <option value="loue">Loué</option>
+            <option value="en_travaux">En travaux</option>
+            <option value="vacant">Vacant</option>
+          </select>
+        </label>
+        <label>Valeur estimée (€)<input id="bienValeur" type="number" step="0.01" min="0" required placeholder="Ex : 185 000"></label>
+        <label>Adresse <span class="muted">optionnel</span><input id="bienAddress" placeholder="Ex : 12 rue de la Paix, Paris"></label>
+        <label>Propriétaire
+          <select id="bienOwner"></select>
+        </label>
+        <label class="full">Comptes liés <span class="muted">— maintenez Ctrl pour en choisir plusieurs</span>
+          <select id="bienAccounts" multiple size="4"></select>
+        </label>
+        <label class="full">Prêts liés <span class="muted">optionnel — maintenez Ctrl pour en choisir plusieurs</span>
+          <select id="bienLoans" multiple size="3"></select>
+        </label>
+        <label>Budget travaux (€) <span class="muted">optionnel</span><input id="bienBudget" type="number" step="0.01" min="0" placeholder="Ex : 160 000"></label>
+        <label>Dépensé travaux (€)<input id="bienSpent" type="number" step="0.01" min="0" placeholder="0"></label>
+        <label class="full">Notes <span class="muted">optionnel</span><input id="bienNotes" placeholder="Ex : loyer 600 €/mois reçu sur LCL"></label>
+        <label class="full">Flux récurrents liés <span class="muted">revenus & charges mensuels rattachés à ce bien — alimentent la performance annuelle</span>
+          <div id="bienFlowsWrap"></div>
+        </label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-close="modalBien">Annuler</button>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODAL : IMPORTER DES TRANSACTIONS ============ -->
+<div class="modal-overlay" id="modalImport" hidden>
+  <div class="modal">
+    <div class="modal-head"><h3>Importer des transactions</h3><button class="modal-close" data-close="modalImport">✕</button></div>
+    <form id="impForm" class="modal-body">
+      <div class="form-grid">
+        <label class="full">Compte de destination
+          <select id="impAccount" required></select>
+        </label>
+        <label class="full">Fichier CSV <span class="muted">optionnel — .csv ou .txt</span>
+          <input type="file" id="impFile" accept=".csv,.txt">
+        </label>
+        <label class="full">Ou collez le contenu <span class="muted">une ligne par transaction — séparateur ; ou , — entêtes reconnus : Date;Libellé;Montant ou Date;Libellé;Débit;Crédit</span>
+          <textarea id="impText" rows="6" placeholder="01/08/2026;Courses;42,50&#10;02/08/2026;Salaire;2500&#10;03/08/2026;Boulangerie;Débit;4,20"></textarea>
+        </label>
+        <div class="full" id="impPreview"></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-close="modalImport">Annuler</button>
+        <button type="submit" class="btn btn-primary" id="impSubmit" disabled>Importer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODAL : MON PROFIL ============ -->
+<div class="modal-overlay" id="modalProfile" hidden>
+  <div class="modal profile-modal">
+    <div class="modal-head"><h3>Mon profil</h3><button class="modal-close" data-close="modalProfile">✕</button></div>
+    <div class="modal-body">
+      <!-- Identité -->
+      <div class="profile-identity">
+        <div class="profile-avatar" id="profileAvatar">T</div>
+        <div class="profile-idinfo">
+          <div class="profile-name" id="profileName">Tommy</div>
+          <div class="profile-id">ID <code id="profileId">—</code></div>
+        </div>
+        <span class="chip" id="profileMode">Mode local</span>
+      </div>
+
+      <!-- Pseudo (éditable) -->
+      <div class="profile-pseudo-row">
+        <label class="full">Pseudo<input id="pfPseudo" maxlength="40" placeholder="Votre pseudo"></label>
+        <button type="button" class="btn btn-outline btn-xs" id="pfSavePseudo">Enregistrer</button>
+      </div>
+
+      <!-- Aperçu cloud vs local -->
+      <div class="profile-cloud-note" id="profileCloudNote" hidden></div>
+
+      <!-- Auth (mode cloud configuré) -->
+      <div class="profile-section" id="profileAuthSection" hidden>
+        <div class="profile-section-title">🔐 Connexion au cloud</div>
+        <form id="profileAuthForm" class="form-grid">
+          <label class="full">Adresse e-mail<input id="pfEmail" type="email" autocomplete="email" placeholder="vous@exemple.fr"></label>
+          <label class="full">Mot de passe<input id="pfPassword" type="password" autocomplete="current-password" placeholder="••••••••"></label>
+          <div class="full profile-auth-actions">
+            <button type="submit" class="btn btn-primary" id="pfSignIn">Se connecter</button>
+            <button type="button" class="btn btn-outline" id="pfSignUp">Créer un compte</button>
+            <button type="button" class="ghost-btn" id="pfPasskeyIn">🔑 Passkey</button>
+          </div>
+          <button type="button" class="ghost-btn full" id="pfForgot">Mot de passe oublié ?</button>
+        </form>
+      </div>
+
+      <!-- Session cloud active -->
+      <div class="profile-section" id="profileSessionSection" hidden>
+        <div class="profile-section-title">☁️ Session cloud</div>
+        <div class="profile-session-line" id="pfSessionEmail">—</div>
+        <div class="profile-session-actions">
+          <button type="button" class="btn btn-outline" id="pfMigrate" title="Importer les données locales (Budget 2027) dans le cloud">⬆ Migrer mes données locales</button>
+          <button type="button" class="btn btn-outline" id="pfPasskeyAdd" title="Ajouter une clé de sécurité (passkey — Touch ID / iCloud Keychain)">🔑 Ajouter une passkey</button>
+          <button type="button" class="btn btn-outline" id="pfChangePwd" title="Recevoir un email pour changer le mot de passe">✎ Changer le mot de passe</button>
+          <button type="button" class="btn btn-outline danger" id="pfSignOut">Se déconnecter</button>
+        </div>
+      </div>
+
+      <!-- Invitation de membres (admin) -->
+      <div class="profile-section" id="profileInviteSection" hidden>
+        <div class="profile-section-title">👥 Inviter un membre au foyer</div>
+        <form id="profileInviteForm" class="form-grid">
+          <label class="full">E-mail du membre<input id="pfInviteEmail" type="email" placeholder="membre@exemple.fr"></label>
+          <button type="submit" class="btn btn-outline full">Envoyer l'invitation</button>
+        </form>
+        <div class="profile-invite-hint" id="pfInviteHint"></div>
+      </div>
+
+      <!-- Zone de danger : réinitialisation locale (déplacée depuis la sidebar) -->
+      <div class="profile-section danger-zone">
+        <div class="profile-section-title">⚠️ Zone de danger</div>
+        <button type="button" class="btn btn-outline danger" id="btnReset" title="Efface les données et recharge le Budget 2027 d'origine">↺ Réinitialiser les données (Budget 2027)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toasts" class="toasts"></div>
+
+<script src="js/config.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/migrate.js"></script>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/alerts.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

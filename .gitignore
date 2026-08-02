@@ -1,0 +1,30 @@
+# Moonee — gitignore
+
+# Système
+.DS_Store
+Thumbs.db
+
+# Environnements / secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Node (si un jour un build est ajouté)
+node_modules/
+dist/
+build/
+
+# Freebuff local (base de l'app desktop, pas le projet)
+.freebuff/*.db
+.freebuff/*.db-shm
+.freebuff/*.db-wal
+.freebuff/preview-*.log
+.freebuff/preview-*.pid
+
+# Supabase local (stubs créés par la CLI)
+supabase/.temp/
+supabase/.branches/
