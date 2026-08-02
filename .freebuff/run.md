@@ -29,8 +29,17 @@ data store.
 
 ## Mode local → Mode cloud (Supabase + multi-utilisateurs)
 
-L'app fonctionne entièrement en local (bouton « Mon profil » en mode local,
-données dans le navigateur) jusqu'à ce qu'un projet Supabase soit configuré.
+**État actuel : CLOUD ACTIF** ✅
+
+- Projet : `moonee` — ref `tqrthtbohqwzbthokfam` — West EU (Paris)
+- URL : https://tqrthtbohqwzbthokfam.supabase.co (rempli dans `js/config.js`)
+- Schéma : appliqué (17 tables, 25 politiques RLS, trigger `on_auth_user_created`)
+  via `supabase/migrations/20260802174000_init.sql` (`supabase db push`)
+- Edge Function `invite` : déployée (`--no-verify-jwt`) — répond `{"error":"Non authentifié."}`
+  aux requêtes sans session (JWT vérifié manuellement dans la fonction)
+- Mot de passe DB : `.freebuff/moonee-db-password.txt` (gitignoré, jamais versionné)
+
+La procédure ci-dessous reste valable pour reproduire sur un autre projet.
 
 ### 1. Créer le projet Supabase (gratuit)
 

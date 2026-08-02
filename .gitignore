@@ -28,3 +28,6 @@ build/
 # Supabase local (stubs créés par la CLI)
 supabase/.temp/
 supabase/.branches/
+
+# Secret local : mot de passe DB du projet Supabase (jamais versionné)
+.freebuff/moonee-db-password.txt

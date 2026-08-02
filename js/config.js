@@ -1,19 +1,16 @@
 /* ============================================================
-   Moonee — Configuration (à remplir après création du projet)
+   Moonee — Configuration Supabase (active)
    ============================================================
-   Créez votre projet Supabase (https://supabase.com), puis :
-   1. Exécutez supabase/schema.sql dans le SQL Editor.
-   2. Copiez ci-dessous l'URL du projet et la clé « anon public ».
-      (La clé anon est PUBLIQUE par conception — la sécurité est
-      assurée par le Row Level Security, pas par cette clé.)
-   3. Déployez la fonction d'invitation (option « inscription
-      contrôlée ») : cf. supabase/functions/invite et le run doc.
+   Projet : moonee (tqrthtbohqwzbthokfam) — West EU (Paris)
+   La clé « anon public » est PUBLIQUE par conception — la sécurité
+   est assurée par le Row Level Security, jamais par cette clé.
+   La clé service_role reste côté serveur (Edge Function invite).
 
-   Tant que ces deux champs sont vides, Moonee fonctionne en MODE
-   LOCAL : toutes les données restent dans le navigateur, le profil
-   est géré localement et aucun compte cloud n'est créé. */
+   Déploiement Edge Function (déjà fait) :
+     supabase functions deploy invite --no-verify-jwt
+   */
 
 window.MOONEE_CONFIG = {
-  supabaseUrl: "",
-  supabaseAnonKey: "",
+  supabaseUrl: "https://tqrthtbohqwzbthokfam.supabase.co",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxcnRodGJvaHF3emJ0aG9rZmFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2OTI0MTgsImV4cCI6MjEwMTI2ODQxOH0.GxkORI97kAmF4Xz4Ktn-HL1xGX2_mdmnMmCRqkS1mr4",
 };
